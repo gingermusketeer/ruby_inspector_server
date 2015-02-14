@@ -7,12 +7,23 @@ var url = require("url")
 function App(socket){
   this.appSocket = socket
   this.uid = uuid.v1()
+  this.responseBodyCache = {}
 }
 
 App.prototype.initialize = function initialize(params){
   this.name = params.name
   this.type = params.type
   this.description = params.description
+}
+
+App.prototype.cacheRequestBody = function cacheRequestBody(requestId, result){
+  this.responseBodyCache[requestId] = result
+}
+
+App.prototype.bodyForRequest = function bodyForRequest(requestId){
+  var result = this.responseBodyCache[requestId]
+  this.responseBodyCache[requestId] = undefined
+  return result
 }
 
 var apps = []
@@ -37,7 +48,10 @@ var server = net.createServer(function(c) {
       try {
         data = JSON.parse(buf.toString())
         if(data.method === "RubyInspector.network.cacheBody"){
-          requestResponseBodyCache = data
+          app.cacheRequestBody(
+            data.params.requestId,
+            data.result
+          )
         } else if(data.method === "RubyInspector.initialize"){
           app.initialize(data.params)
         } else {
@@ -98,9 +112,7 @@ wss.on('connection', function(ws) {
           if(msg.method === "Network.enable"){
             response.result = {}
           } else if(msg.method === "Network.getResponseBody"){
-            if(msg.params.requestId === requestResponseBodyCache.params.requestId){
-              response.result = requestResponseBodyCache.result
-            }
+            response.result = appToConnect.bodyForRequest(msg.params.requestId)
           }
           console.log(msg);
           console.log(response);
