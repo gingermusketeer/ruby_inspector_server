@@ -1,46 +1,10 @@
 var express = require("express")
 var WebSocketServer = require("ws").Server
 var morgan = require("morgan")
-var querystring = require("querystring")
 var url = require("url")
+var net = require("net");
 
-var apps = []
-
-function App(socket, params){
-  this.appSocket = socket
-
-  this.responseBodyCache = {}
-  this.uid = querystring.escape(params.name)
-
-  this.name = params.name
-  this.type = params.type
-  this.description = params.description
-}
-
-App.findOrCreate = function findOrCreate(socket, params){
-  var existingApp = apps.filter(function(app){
-    return app.name === params.name
-  })[0]
-  if(existingApp){
-    return existingApp
-  } else {
-    var app = new App(socket, params)
-    apps.push(app)
-    return app
-  }
-}
-
-App.prototype.cacheRequestBody = function cacheRequestBody(requestId, result){
-  this.responseBodyCache[requestId] = result
-}
-
-App.prototype.bodyForRequest = function bodyForRequest(requestId){
-  var result = this.responseBodyCache[requestId]
-  this.responseBodyCache[requestId] = undefined
-  return result
-}
-
-var net = require('net');
+var App = require("./lib/app")
 
 var requestResponseBodyCache = null
 var server = net.createServer(function(c) {
@@ -49,7 +13,6 @@ var server = net.createServer(function(c) {
   console.log('app connected');
   c.on('end', function() {
     console.log('app disconnected');
-    // close websocket Connections
   });
 
   c.on('data', function(buf){
@@ -83,10 +46,10 @@ server.listen(8124, function() {
 var eApp = express()
 var eAppBaseHttpUrl = null
 var eAppBaseWsUrl = null
-eApp.use(morgan('combined'))
+// eApp.use(morgan('combined'))
 
 eApp.get("/json", function(req, res){
-  var data = apps.map(function(app){
+  var data = App.all().map(function(app){
     return {
       type: "app",
       description: app.description,
@@ -109,9 +72,7 @@ wss.on('connection', function(ws) {
   var matches = ws.upgradeReq.url.match(/^\/devtools\/app\/([^\/]+)$/)
   if(matches) {
     var id = matches[1]
-    var appToConnect = apps.filter(function(app){
-      return app.uid === id
-    })[0]
+    var appToConnect = App.findByUid(id)
     if(appToConnect){
       appToConnect.clientSocket = ws
 
