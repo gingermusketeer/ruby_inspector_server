@@ -1,19 +1,33 @@
 var express = require("express")
 var WebSocketServer = require("ws").Server
 var morgan = require("morgan")
-var uuid = require('node-uuid')
+var querystring = require("querystring")
 var url = require("url")
 
-function App(socket){
-  this.appSocket = socket
-  this.uid = uuid.v1()
-  this.responseBodyCache = {}
-}
+var apps = []
 
-App.prototype.initialize = function initialize(params){
+function App(socket, params){
+  this.appSocket = socket
+
+  this.responseBodyCache = {}
+  this.uid = querystring.escape(params.name)
+
   this.name = params.name
   this.type = params.type
   this.description = params.description
+}
+
+App.findOrCreate = function findOrCreate(socket, params){
+  var existingApp = apps.filter(function(app){
+    return app.name === params.name
+  })[0]
+  if(existingApp){
+    return existingApp
+  } else {
+    var app = new App(socket, params)
+    apps.push(app)
+    return app
+  }
 }
 
 App.prototype.cacheRequestBody = function cacheRequestBody(requestId, result){
@@ -26,20 +40,15 @@ App.prototype.bodyForRequest = function bodyForRequest(requestId){
   return result
 }
 
-var apps = []
-
 var net = require('net');
 
 var requestResponseBodyCache = null
 var server = net.createServer(function(c) {
-  var app = new App(c)
-  apps.push(app)
+  var app
 
   console.log('app connected');
   c.on('end', function() {
     console.log('app disconnected');
-    var index = apps.indexOf(app)
-    apps.splice(index, 1)
     // close websocket Connections
   });
 
@@ -53,7 +62,7 @@ var server = net.createServer(function(c) {
             data.result
           )
         } else if(data.method === "RubyInspector.initialize"){
-          app.initialize(data.params)
+          app = App.findOrCreate(c, data.params)
         } else {
           app.clientSocket.send(buf.toString())
         }

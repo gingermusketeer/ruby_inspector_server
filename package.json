@@ -11,7 +11,6 @@
   "dependencies": {
     "express": "^4.11.2",
     "morgan": "^1.5.1",
-    "node-uuid": "^1.4.2",
     "ws": "^0.7.1"
   },
   "description": "Intermediary server to allow ruby apps to talk the devtools protocol",
