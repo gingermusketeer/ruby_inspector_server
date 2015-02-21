@@ -28,8 +28,10 @@ var server = net.createServer(function(c) {
       )
     } else if(data.method === "RubyInspector.initialize"){
       app = App.findOrCreate(c, data.params)
-    } else {
+    } else if(app.clientSocket){
       app.clientSocket.send(rawMsg)
+    } else {
+      console.log("no client. Dropping msg")
     }
   })
 
