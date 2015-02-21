@@ -5,33 +5,32 @@ var url = require("url")
 var net = require("net");
 
 var App = require("./lib/app")
+var delimiterStream = require('./lib/delimiter_stream')
 
-var requestResponseBodyCache = null
+var NULL_DELIMITER = "\0"
+
 var server = net.createServer(function(c) {
   var app
 
   console.log('app connected');
+
   c.on('end', function() {
     console.log('app disconnected');
   });
 
-  c.on('data', function(buf){
-    console.log(buf.toString())
-      try {
-        data = JSON.parse(buf.toString())
-        if(data.method === "RubyInspector.network.cacheBody"){
-          app.cacheRequestBody(
-            data.params.requestId,
-            data.result
-          )
-        } else if(data.method === "RubyInspector.initialize"){
-          app = App.findOrCreate(c, data.params)
-        } else {
-          app.clientSocket.send(buf.toString())
-        }
-      } catch(e){
-        console.log(e)
-      }
+  var nullDelimiterStream = delimiterStream(NULL_DELIMITER)
+  c.pipe(nullDelimiterStream).on("data", function(rawMsg){
+    var data = JSON.parse(rawMsg)
+    if(data.method === "RubyInspector.network.cacheBody"){
+      app.cacheRequestBody(
+        data.params.requestId,
+        data.result
+      )
+    } else if(data.method === "RubyInspector.initialize"){
+      app = App.findOrCreate(c, data.params)
+    } else {
+      app.clientSocket.send(rawMsg)
+    }
   })
 
   c.on("error", function(){
@@ -46,7 +45,7 @@ server.listen(8124, function() {
 var eApp = express()
 var eAppBaseHttpUrl = null
 var eAppBaseWsUrl = null
-// eApp.use(morgan('combined'))
+eApp.use(morgan('combined'))
 
 eApp.get("/json", function(req, res){
   var data = App.all().map(function(app){

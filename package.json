@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha $(find spec -name '*_spec.js')",
     "start": "supervisor index.js"
   },
   "author": "Max Brosnahan",
@@ -11,6 +11,7 @@
   "dependencies": {
     "express": "^4.11.2",
     "morgan": "^1.5.1",
+    "through": "^2.3.6",
     "ws": "^0.7.1"
   },
   "description": "Intermediary server to allow ruby apps to talk the devtools protocol",
@@ -28,6 +29,8 @@
   },
   "homepage": "https://github.com/gingermusketeer/ruby_inspector_server",
   "devDependencies": {
+    "chai": "^2.0.0",
+    "mocha": "^2.1.0",
     "supervisor": "^0.6.0"
   }
 }
