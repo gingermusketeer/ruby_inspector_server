@@ -21,14 +21,14 @@ var server = net.createServer(function(c) {
   var nullDelimiterStream = delimiterStream(NULL_DELIMITER)
   c.pipe(nullDelimiterStream).on("data", function(rawMsg){
     var data = JSON.parse(rawMsg)
-    if(data.method === "RubyInspector.network.cacheBody"){
+    if(app && data.method === "RubyInspector.network.cacheBody"){
       app.cacheRequestBody(
         data.params.requestId,
         data.result
       )
     } else if(data.method === "RubyInspector.initialize"){
       app = App.findOrCreate(c, data.params)
-    } else if(app.clientSocket){
+    } else if(app && app.clientSocket){
       app.clientSocket.send(rawMsg)
     } else {
       console.log("no client. Dropping msg")
